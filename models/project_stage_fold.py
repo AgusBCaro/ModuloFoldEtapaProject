@@ -13,12 +13,12 @@ MESES_ES = {
 ETAPAS_PENDIENTES = ['en progreso', 'cancelada']
 
 
-class ProjectTaskType(models.Model):
+class ProjectProjectStage(models.Model):
     """
-    Hereda project.task.type para agregar la lógica de auto-fold
+    Hereda project.project.stage para agregar la lógica de auto-fold
     de etapas según el mes actual y el mes anterior.
     """
-    _inherit = 'project.task.type'
+    _inherit = 'project.project.stage'
 
     @api.model
     def auto_fold_month_stages(self):
@@ -85,7 +85,7 @@ class ProjectProject(models.Model):
           list[dict]: Lista de {'mes': str, 'proyecto': str} para mostrar al usuario.
         """
         # 1. Auto-fold de etapas
-        self.env['project.task.type'].auto_fold_month_stages()
+        self.env['project.project.stage'].auto_fold_month_stages()
 
         # 2. Calcular meses que no deben doblarse
         hoy = date.today()
@@ -103,7 +103,7 @@ class ProjectProject(models.Model):
         advertencias = []
 
         # 3. Recorrer etapas que representan meses y que deben estar dobladas
-        etapas = self.env['project.task.type'].search([])
+        etapas = self.env['project.project.stage'].search([])
         for etapa in etapas:
             nombre_lower = etapa.name.strip().lower()
 
