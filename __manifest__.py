@@ -6,7 +6,6 @@
     'author': 'Tu Nombre',
     'depends': ['project'],
     'data': [
-        'views/project_views.xml',
     ],
     'assets': {
         'web.assets_backend': [
