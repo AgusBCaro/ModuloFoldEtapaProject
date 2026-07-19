@@ -90,27 +90,29 @@ class ProjectProject(models.Model):
     _inherit = 'project.project'
 
     @api.model
-    def read_group(self, domain, fields, groupby, offset=0, limit=None, orderby=False, lazy=True):
+    def read_group(self, *args, **kwargs):
         """
         Sobrescribe read_group para disparar el auto-fold en el backend
         cada vez que Odoo agrupe los proyectos por su etapa (stage_id).
+        Usa *args y **kwargs para evitar errores de firma con parámetros
+        propios de Odoo o de otros módulos.
         """
+        groupby = kwargs.get('groupby') or (args[2] if len(args) > 2 else None)
         if groupby and any(g.split(':')[0] == 'stage_id' for g in groupby):
             self.env['project.project.stage'].auto_fold_month_stages()
-        return super(ProjectProject, self).read_group(
-            domain, fields, groupby, offset=offset, limit=limit, orderby=orderby, lazy=lazy
-        )
+        return super(ProjectProject, self).read_group(*args, **kwargs)
 
     @api.model
-    def web_read_group(self, domain, fields, groupby, limit=None, offset=0, orderby=False, lazy=True, detail=False):
+    def web_read_group(self, *args, **kwargs):
         """
         Sobrescribe web_read_group (usado por vistas kanban/listas) para disparar el auto-fold.
+        Usa *args y **kwargs para evitar errores de firma con parámetros
+        como 'expand_orderby' propios de Odoo 16.
         """
+        groupby = kwargs.get('groupby') or (args[2] if len(args) > 2 else None)
         if groupby and any(g.split(':')[0] == 'stage_id' for g in groupby):
             self.env['project.project.stage'].auto_fold_month_stages()
-        return super(ProjectProject, self).web_read_group(
-            domain, fields, groupby, limit=limit, offset=offset, orderby=orderby, lazy=lazy, detail=detail
-        )
+        return super(ProjectProject, self).web_read_group(*args, **kwargs)
 
     @api.model
     def get_month_pending_warnings(self):
