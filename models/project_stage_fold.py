@@ -8,9 +8,7 @@ MESES_ES = {
     9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre"
 }
 
-# Nombres de etapas de tareas que se consideran "pendientes"
-# Una tarea está pendiente si está en cualquiera de estos estados (comparación case-insensitive)
-ETAPAS_PENDIENTES = ['en progreso', 'cancelada']
+# Criterio de tareas pendientes: kanban_state == 'normal' (En progreso)
 
 
 class ProjectProjectStage(models.Model):
@@ -56,15 +54,13 @@ class ProjectProjectStage(models.Model):
                 debe_doblar = False
             else:
                 # Si el mes no es el actual ni el anterior, debería doblarse.
-                # Pero si contiene algún proyecto con tareas pendientes, NO se dobla.
+                # Pero si contiene algún proyecto con tareas pendientes (en progreso), NO se dobla.
                 proyectos_en_etapa = self.env['project.project'].search([('stage_id', '=', etapa.id)])
                 tiene_tareas_pendientes = False
                 for proj in proyectos_en_etapa:
                     tareas_pendientes = self.env['project.task'].search_count([
                         ('project_id', '=', proj.id),
-                        '|',
-                        ('stage_id.name', '=ilike', 'en progreso'),
-                        ('stage_id.name', '=ilike', 'cancelada'),
+                        ('kanban_state', '=', 'normal'),
                     ])
                     if tareas_pendientes > 0:
                         tiene_tareas_pendientes = True
@@ -170,12 +166,10 @@ class ProjectProject(models.Model):
             ])
 
             for proyecto in proyectos:
-                # Verificar si el proyecto tiene tareas con etapa 'En Progreso' o 'Cancelada'
+                # Verificar si el proyecto tiene tareas en estado 'En progreso' (kanban_state == 'normal')
                 dominio_tareas_pendientes = [
                     ('project_id', '=', proyecto.id),
-                    '|',
-                    ('stage_id.name', '=ilike', 'en progreso'),
-                    ('stage_id.name', '=ilike', 'cancelada'),
+                    ('kanban_state', '=', 'normal'),
                 ]
 
                 tiene_pendientes = bool(
