@@ -26,10 +26,9 @@ class ProjectProjectStage(models.Model):
         Dobla automáticamente todas las etapas cuyos nombres coincidan con
         un mes en español, excepto el mes actual y el mes anterior.
 
-        Ejemplo (si hoy es Julio 2026):
-          - Julio  → fold = False  (mes actual)
-          - Junio  → fold = False  (mes anterior)
-          - Resto  → fold = True
+        Adicionalmente, si un mes que debería doblarse contiene algún proyecto
+        con tareas pendientes (en progreso o canceladas), ese mes NO se doblará
+        (se dejará con fold = False).
         """
         hoy = date.today()
         mes_actual = hoy.month
@@ -52,7 +51,29 @@ class ProjectProjectStage(models.Model):
             if nombre not in todos_los_meses:
                 continue
 
-            debe_doblar = nombre not in meses_abiertos
+            if nombre in meses_abiertos:
+                # El mes actual y anterior siempre están abiertos (no se doblan)
+                debe_doblar = False
+            else:
+                # Si el mes no es el actual ni el anterior, debería doblarse.
+                # Pero si contiene algún proyecto con tareas pendientes, NO se dobla.
+                proyectos_en_etapa = self.env['project.project'].search([('stage_id', '=', etapa.id)])
+                tiene_tareas_pendientes = False
+                for proj in proyectos_en_etapa:
+                    tareas_pendientes = self.env['project.task'].search_count([
+                        ('project_id', '=', proj.id),
+                        '|',
+                        ('stage_id.name', '=ilike', 'en progreso'),
+                        ('stage_id.name', '=ilike', 'cancelada'),
+                    ])
+                    if tareas_pendientes > 0:
+                        tiene_tareas_pendientes = True
+                        break
+
+                if tiene_tareas_pendientes:
+                    debe_doblar = False  # No se dobla porque tiene tareas pendientes
+                else:
+                    debe_doblar = True
 
             # Solo escribir si el valor cambió, para evitar writes innecesarios
             if etapa.fold != debe_doblar:
@@ -67,6 +88,29 @@ class ProjectProject(models.Model):
          pendientes en meses que deberían estar doblados.
     """
     _inherit = 'project.project'
+
+    @api.model
+    def read_group(self, domain, fields, groupby, offset=0, limit=None, orderby=False, lazy=True):
+        """
+        Sobrescribe read_group para disparar el auto-fold en el backend
+        cada vez que Odoo agrupe los proyectos por su etapa (stage_id).
+        """
+        if groupby and any(g.split(':')[0] == 'stage_id' for g in groupby):
+            self.env['project.project.stage'].auto_fold_month_stages()
+        return super(ProjectProject, self).read_group(
+            domain, fields, groupby, offset=offset, limit=limit, orderby=orderby, lazy=lazy
+        )
+
+    @api.model
+    def web_read_group(self, domain, fields, groupby, limit=None, offset=0, orderby=False, lazy=True, detail=False):
+        """
+        Sobrescribe web_read_group (usado por vistas kanban/listas) para disparar el auto-fold.
+        """
+        if groupby and any(g.split(':')[0] == 'stage_id' for g in groupby):
+            self.env['project.project.stage'].auto_fold_month_stages()
+        return super(ProjectProject, self).web_read_group(
+            domain, fields, groupby, limit=limit, offset=offset, orderby=orderby, lazy=lazy, detail=detail
+        )
 
     @api.model
     def get_month_pending_warnings(self):
@@ -111,7 +155,7 @@ class ProjectProject(models.Model):
             if nombre_lower not in nombres_meses_display:
                 continue
 
-            # ¿Es un mes que debería estar doblado?
+            # ¿Es un mes que debería estar doblado? (los que no son el actual ni el anterior)
             if nombre_lower in meses_no_doblar:
                 continue
 

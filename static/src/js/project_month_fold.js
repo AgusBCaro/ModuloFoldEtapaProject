@@ -26,7 +26,7 @@ patch(KanbanController.prototype, "project_month_fold_warnings", {
         this._super(...arguments);
 
         // Verificar que estamos en la vista Kanban de proyectos
-        if (this.model?.config?.resModel !== "project.project") {
+        if (this.props.resModel !== "project.project") {
             return;
         }
 
