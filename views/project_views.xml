@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        Vista heredada para incluir el asset JS en el backend de Odoo 16.
+        El archivo JS hace un patch sobre KanbanController para interceptar
+        la carga de la vista de proyectos y disparar el auto-fold + advertencias.
+    -->
+    <template id="assets_backend_fold_etapa"
+              name="Auto-Fold Etapas Mes - Assets"
+              inherit_id="web.assets_backend">
+        <xpath expr="." position="inside">
+            <script type="module"
+                    src="/ModuloFoldEtapaProject/static/src/js/project_month_fold.js"/>
+        </xpath>
+    </template>
+</odoo>
