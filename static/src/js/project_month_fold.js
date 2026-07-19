@@ -53,18 +53,31 @@ patch(KanbanController.prototype, "project_month_fold_warnings", {
                     return;
                 }
 
-                // Mostrar una notificación sticky por cada advertencia
+                // Deduplicar advertencias por si acaso
+                const uniqueWarnings = [];
+                const seen = new Set();
                 for (const w of warnings) {
-                    notification.add(
-                        `El mes ${w.mes} no puede ser doblado ya que el proyecto "${w.proyecto}" tiene tareas pendientes`,
-                        {
-                            title: "⚠️ Advertencia de Cierre de Mes",
-                            type: "warning",
-                            // sticky: true → el usuario debe cerrarla manualmente
-                            sticky: true,
-                        }
-                    );
+                    const key = `${w.mes}-${w.proyecto}`;
+                    if (!seen.has(key)) {
+                        seen.add(key);
+                        uniqueWarnings.push(w);
+                    }
                 }
+
+                let message = "";
+                if (uniqueWarnings.length === 1) {
+                    message = `El mes ${uniqueWarnings[0].mes} no puede ser doblado ya que el proyecto "${uniqueWarnings[0].proyecto}" tiene tareas pendientes.`;
+                } else {
+                    message = "Los siguientes meses no pueden ser doblados por tener tareas pendientes:\n" +
+                        uniqueWarnings.map(w => `• ${w.mes}: "${w.proyecto}"`).join("\n");
+                }
+
+                // Mostrar notificación temporal (sticky: false por defecto)
+                notification.add(message, {
+                    title: "⚠️ Advertencia de Cierre de Mes",
+                    type: "warning",
+                    sticky: false,
+                });
             } catch (error) {
                 // Logueamos el error sin interrumpir la experiencia del usuario
                 console.error(
